@@ -17,10 +17,6 @@ from __future__ import print_function
 
 
 # coding = utf-8
-from future import standard_library
-standard_library.install_aliases()
-from builtins import str
-from builtins import object
 import cherrypy
 import simplejson as json
 import os
@@ -33,7 +29,7 @@ import itertools
 import numpy
 import dill as pickle
 import operator
-from urllib.parse import unquote
+from urllib2 import unquote
 import synthdb
 import preqlerrors
 import math
@@ -86,7 +82,7 @@ def trim_id(id_val):
 def id_or_uid(o_id, obj_type):
     prim_id = trim_id(o_id)
     if obj_type in ['node', 'link']:
-        m = primary_id_check.match(str(prim_id))
+        m = primary_id_check.match(unicode(prim_id))
         if m:
             try:
                 obj_id = int(prim_id)
@@ -108,7 +104,7 @@ def id_or_uid(o_id, obj_type):
 def tab_separate(f, delim='\t'):
     buf = ''
     while True:
-        c = str(f.read(1))
+        c = unicode(f.read(1))
         if c == '':
             return
         buf += c
@@ -122,7 +118,7 @@ def db_id(g_id):
 
 
 def get_vertex_id(g_id, n_id, c):
-    if primary_id_check.match(str(n_id)):
+    if primary_id_check.match(unicode(n_id)):
         return int(n_id)
     else:
         prim_id = trim_id(n_id)
@@ -136,7 +132,7 @@ def get_edge_id(g_id, e, c):
     if type(e).__name__ == "Edge":
         return "{}_{}_{}".format(int(e.source()), graphs[g_id].edge_properties['id'][e], int(e.target()))
     prim_id = trim_id(e)
-    if primary_id_check.match(str(prim_id)):
+    if primary_id_check.match(unicode(prim_id)):
         return prim_id
     else:
         d = auto_reql(r.db(db_id(g_id)).table('links').get_all(prim_id, index='uid').coerce_to('array'), c)
@@ -149,7 +145,7 @@ def get_field_list(d):
     if isinstance(d, str):
         return [d]
     resp = []
-    for k, v in d.items():
+    for k, v in d.iteritems():
         resp.append(k)
         if isinstance(v, dict):
             resp += get_field_list(v)

@@ -1,8 +1,4 @@
 from __future__ import print_function
-from builtins import next
-from builtins import map
-from builtins import str
-from builtins import range
 import rethinkdb as r
 import simplejson as json
 import dill as pickle
@@ -52,7 +48,7 @@ def insert(self, g_id, dbid, head, conn):
             batch.append(to_add)
         except (ValueError, TypeError) as m:
             if r_fail:
-                failures.append({params['type'][:-1]: doc, 'error': str(m)})
+                failures.append({params['type'][:-1]: doc, 'error': unicode(m)})
         if len(batch) >= self.chunk_limit:
             d = process_batch()
             total_inserted += d['inserted']
@@ -438,7 +434,7 @@ def update(self, g_id, dbid, head, conn):
         update = body['update']
 
         def literalize(d):
-            for k, v in d.items():
+            for k, v in d.iteritems():
                 if isinstance(v, dict):
                     literalize(v)
                 else:
@@ -699,7 +695,7 @@ def walk(self, g_id, dbid, head, conn):
 def fields(self, g_id, dbid, head, conn):
     obj_type = json.loads(head['params'])['type']
     if obj_type in acceptable_types:
-        fields = auto_reql(r.db(dbid).table(obj_type).map(lambda n: list(n.keys())).reduce(
+        fields = auto_reql(r.db(dbid).table(obj_type).map(lambda n: n.keys()).reduce(
             lambda x, y: r.expr(x + y).distinct()), conn)
         return json.dumps(fields)
 
@@ -1975,7 +1971,7 @@ def clone_bfs2(g_id, node_id, conn, **kwargs):
         for i in range(1, kwargs['dist']):
             if len(discovered_nodes) > i and len(discovered_nodes[i]) > 0:
                 discovered_nodes.append([])
-                list(map(one_node, discovered_nodes[i], (i + 1 for nd in discovered_nodes[i])))
+                map(one_node, discovered_nodes[i], (i + 1 for nd in discovered_nodes[i]))
                 discovered_nodes[i+1] = list(set(discovered_nodes[i+1]))
                 nfilt_tier(i+1)
 
@@ -1997,7 +1993,7 @@ def clone_bfs2(g_id, node_id, conn, **kwargs):
             except KeyError:
                 pass
 
-        list(map(do_it, set(get_all_links())))
+        map(do_it, set(get_all_links()))
         graph2_id = str(uuid4()).replace('-', '_')
         graphs[graph2_id] = graph2
         if kwargs['topo'] == "hits":
@@ -2029,9 +2025,9 @@ def clone_bfs2(g_id, node_id, conn, **kwargs):
         purge_graph(graph2_id)
         if 'sort' in kwargs:
             if 'limit' in kwargs:
-                return sorted(list(d.items()), key=operator.itemgetter(1), **kwargs['sort'])[:kwargs['limit']]
+                return sorted(d.items(), key=operator.itemgetter(1), **kwargs['sort'])[:kwargs['limit']]
             else:
-                return sorted(list(d.items()), key=operator.itemgetter(1), **kwargs['sort'])
+                return sorted(d.items(), key=operator.itemgetter(1), **kwargs['sort'])
         return d
     else:
         if 'direction' not in kwargs['topo_params']:
@@ -2098,9 +2094,9 @@ def clone_bfs2(g_id, node_id, conn, **kwargs):
             if 'reduce' not in kwargs:
                 def get_len(obj):
                     return len(obj[1])
-                overlaps = sorted(list(overlaps.items()), key=get_len, **kwargs['sort'])
+                overlaps = sorted(overlaps.items(), key=get_len, **kwargs['sort'])
             else:
-                overlaps = sorted(list(overlaps.items()), key=operator.itemgetter(1), **kwargs['sort'])
+                overlaps = sorted(overlaps.items(), key=operator.itemgetter(1), **kwargs['sort'])
         if 'limit' in kwargs:
             return overlaps[:kwargs['limit']]
         return overlaps
@@ -2196,7 +2192,7 @@ def breadth_first(g_id, node_id, conn, **kwargs):
             if len(discovered_nodes) > i and len(discovered_nodes[i]) > 0:
                 discovered_nodes.append([])
                 discovered_links.append([])
-                list(map(one_node, discovered_nodes[i], (i + 1 for nd in discovered_nodes[i])))
+                map(one_node, discovered_nodes[i], (i + 1 for nd in discovered_nodes[i]))
                 nfilt_tier(i+1)
     if nmap:
         if 'js_func' in kwargs:
@@ -2205,7 +2201,7 @@ def breadth_first(g_id, node_id, conn, **kwargs):
             def n_map(n):
                 return n['id'], kwargs['nmap']
         node_map = {n_val: node_map[n_id] for n_id, n_val in auto_reql(
-            r.db(db_id(g_id)).table('nodes').get_all(*list(node_map.keys())).map(n_map), conn)}
+            r.db(db_id(g_id)).table('nodes').get_all(*node_map.keys()).map(n_map), conn)}
 
     if lmap:
         if 'js_func' in kwargs:
@@ -2219,13 +2215,13 @@ def breadth_first(g_id, node_id, conn, **kwargs):
                     link_map[l_id] = l_val
         if 'reduce' in kwargs:
             if 'js_func' in kwargs:
-                d = {k: r.expr([link_map[vv] for vv in v]).reduce(r.js(kwargs['reduce'])).run(conn) for k, v in node_map.items()}
+                d = {k: r.expr([link_map[vv] for vv in v]).reduce(r.js(kwargs['reduce'])).run(conn) for k, v in node_map.iteritems()}
             else:
-                d = {k: reduce(kwargs['reduce'], [link_map[vv] for vv in v]) for k, v in node_map.items()}
+                d = {k: reduce(kwargs['reduce'], [link_map[vv] for vv in v]) for k, v in node_map.iteritems()}
             if 'sort' in kwargs:
-                return sorted(list(d.items()), key=operator.itemgetter(1), **kwargs['sort'])
+                return sorted(d.items(), key=operator.itemgetter(1), **kwargs['sort'])
             return d
-        return {k: [link_map[vv] for vv in v] for k, v in node_map.items()}
+        return {k: [link_map[vv] for vv in v] for k, v in node_map.iteritems()}
     return node_map
 
 
@@ -2275,7 +2271,7 @@ def add_node(g_id, node_data, conflict, conn):
         node_data['type'] = "Node"
     v_id = None
     if conflict in ['replace', 'update'] and ('id' in node_data or 'uid' in node_data):
-        if 'id' in node_data and primary_id_check.match(str(node_data['id'])):
+        if 'id' in node_data and primary_id_check.match(unicode(node_data['id'])):
             v_id = node_data['id']
         elif 'uid' in node_data:
             if node_data['uid'] != '':
